@@ -45,3 +45,8 @@ doc/*.log
 .metals/
 metals.sbt
 .vscode/
+
+# Other output
+*.anno.json
+*.fir
+*.v
