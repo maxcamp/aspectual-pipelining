@@ -21,7 +21,7 @@ class PipelineTester extends ChiselFlatSpec {
 
   backends foreach {backend =>
     it should s"test the basic add circuit" in {
-      Driver(() => new Component(new Add), backend)((c) => new PipelineTests(c)) should be (true)
+      Driver(() => new Component(() => new Add, () => new Var, () => new Var), backend)((c) => new PipelineTests(c)) should be (true)
     }
   }
 }
