@@ -7,9 +7,9 @@ import chisel3._
  */
 class Var extends Module {
   val io = IO(new Bundle {
-    val a     = Input(UInt(32.W))
+    val x     = Input(UInt(32.W))
     val out   = Output(UInt(32.W))
   })
   
-  io.out := io.a
+  io.out := io.x
 }
