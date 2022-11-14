@@ -3,7 +3,7 @@ package main
 import chisel3._
 
 // Can't pass a variable number of by-name parameters in Scala 2, using thunks instead
-class Component(module: () => Module, preInputs: () => Module *) extends Module {
+class Component(module: () => Module, val stage: Int, preInputs: () => Module *) extends Module {
 
     // Call Module on all the de-thunked objects for chisel to work, needs to be done in this context
     val subModule = Module(module())
@@ -20,10 +20,21 @@ class Component(module: () => Module, preInputs: () => Module *) extends Module 
     }
     // Output determind by subModule computation
     ioList = ("out", Output(subModule.io.elements("out").cloneType)) :: ioList
+    ioList = ioList.reverse
 
     // Using CustomBundle to be able to create an IO bundle from variables
     val bundle = new CustomBundle(ioList:_*)
     val io = IO(bundle)
+
+    // Determine if a register is needed for each input
+    var registerNeeded: List[Boolean] = List()
+    for (i <- 0 to inputs.length-1) {
+        inputs(i) match {
+            case c: Component => {registerNeeded = (c.stage < this.stage) :: registerNeeded}
+            case _ => {registerNeeded = false :: registerNeeded}
+        }
+    }
+    registerNeeded = registerNeeded.reverse
 
     // Pass the IO inputs to this module to the children
     for (i <- 0 to inputs.length-1) {

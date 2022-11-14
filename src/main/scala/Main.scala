@@ -11,7 +11,7 @@ object Main extends App {
         val x = () => new Var
         val add = () => new Add
 
-        val result = add(add(x, x), add(x, x))
+        val result = add(1, add(1, add(1, x, x), x), x)
 
         result()
     })

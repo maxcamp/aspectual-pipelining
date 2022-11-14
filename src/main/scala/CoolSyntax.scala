@@ -2,10 +2,10 @@ package main
 import chisel3._
 
 object CoolSyntax {
-    implicit class Function0Extension(v: Function0[Module]) {
+    implicit class Function0Extension(f: Function0[Module]) {
 
-        def apply(x: () => Module *): () => Component = {
-            () => new Component(v, x:_*)
+        def apply(stage: Int, inputs: () => Module *): () => Component = {
+            () => new Component(f, stage, inputs:_*)
         }
 
     }
