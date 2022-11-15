@@ -11,6 +11,6 @@ class Add extends Module {
     val b     = Input(UInt(32.W))
     val out   = Output(UInt(32.W))
   })
-  
+
   io.out := io.a + io.b
 }
