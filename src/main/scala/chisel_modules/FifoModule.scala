@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 
 /**
- * Return the values in data, one per clock tick
+ * Ouput the values in data, one per clock tick
  */
 class Fifo(data: Int *) extends Module {
     val io = IO(new Bundle {
@@ -21,6 +21,7 @@ class Fifo(data: Int *) extends Module {
     io.out := queue(pointer)
     pointer := pointer + 1.U
 
+    
 
 
     // printf("output: %d  pointer: %d  queue[2]: %d\n",

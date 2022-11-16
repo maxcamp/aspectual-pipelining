@@ -9,7 +9,7 @@ class Component(module: () => Module, val stage: Int, preInputs: Map[String, () 
     val subModule = Module(module())
     val inputs = preInputs.map({case (key, mod) => (key, Module(mod()))})
 
-    // Put every input into a list
+    // Put every input to this module into a list with a unique name
     var ioList: List[(String, Data)] = List()
     for ((key, mod) <- inputs) {
         for ((name, data) <- mod.io.elements) {
@@ -18,7 +18,7 @@ class Component(module: () => Module, val stage: Int, preInputs: Map[String, () 
             }
         }
     }
-    // Output determind by subModule computation
+    // This output determind by subModule computation
     ioList = ("out", Output(subModule.io.elements("out").cloneType)) :: ioList
     ioList = ioList.reverse
 
@@ -32,13 +32,16 @@ class Component(module: () => Module, val stage: Int, preInputs: Map[String, () 
     for ((key, mod) <- inputs) {
         mod match {
             case c: Component => {
+                // One register per stage behind
                 for (i <- c.stage to this.stage-1) {
                     registers += (key + "_" + i -> Reg(mod.io.elements("out").cloneType))
                 }
+                // Add this computation to stages at the right stage
                 val updated = stages.getOrElse(c.stage, Map()) + (key -> mod)
                 stages += (c.stage -> updated)
             }
             case _ => {
+                // Add this computation to stages at the current stage
                 val updated = stages.getOrElse(this.stage, Map()) + (key -> mod)
                 stages += (this.stage -> updated)
             }
@@ -47,8 +50,10 @@ class Component(module: () => Module, val stage: Int, preInputs: Map[String, () 
 
     // Pass the IO inputs to this module to the children one stage at a time
     val order = stages.keySet.toList.sortWith(_<_)
+    // Keep track of which values are in which registers
     var previousRegisters: Map[String, Int] = Map()
     for (stage <- order) {
+        // Forward old values from previous register to new register
         if (stage != this.stage) {
             for ((key, previousStage) <- previousRegisters) {
                 registers(key + "_" + stage) := registers(key + "_" + previousStage)
