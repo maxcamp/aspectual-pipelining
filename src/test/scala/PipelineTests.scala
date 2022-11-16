@@ -3,8 +3,10 @@ package main
 import chisel3._
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
-class PipelineTests(c: Component) extends PeekPokeTester(c) {
-  val outputs = List(0, 4, 8)
+class PipelineTests(c: Component, outputs: List[Int], delay: Int) extends PeekPokeTester(c) {
+  
+  // Clock cycles to wait before first output
+  step(delay)
 
   var i = 0
   do {
@@ -12,25 +14,29 @@ class PipelineTests(c: Component) extends PeekPokeTester(c) {
     expect(intCast, outputs(i))
     step(1)
     i += 1
-  } while (i < 3)
+  } while (i < outputs.length)
+
 }
 
 class PipelineTester extends ChiselFlatSpec {
-  behavior of "Single-Stage Add/Subtract Pipeline"
+  behavior of "Add/Subtract Pipeline"
 
   val inputA = () => new Fifo(1, 2, 3)
-  val inputB = () => new Fifo(4, 5, 6)
-  val inputC = () => new Fifo(6, 5, 4)
+  val inputB = () => new Fifo(0, 4, 5, 6)
+  val inputC = () => new Fifo(0, 0, 7, 8, 9)
   val add = () => new Add
   val subtract = () => new Subtract
 
   val stage1 = () => new Component(add, 1, Map("a" -> inputA, "b" -> inputA))
-  val stage2 = () => new Component(add, 1, Map("a" -> stage1, "b" -> inputB))
-  val result = () => new Component(subtract, 1, Map("b" -> stage2, "a" -> inputC))
+  val stage2 = () => new Component(add, 2, Map("a" -> stage1, "b" -> inputB))
+  val result = () => new Component(add, 3, Map("a" -> stage2, "b" -> inputC))
 
   backends foreach {backend =>
-    it should s"test the basic add circuit" in {
-      Driver(result, backend)((c) => new PipelineTests(c)) should be (true)
+    it should s"test the one-stage add circuit" in {
+      Driver(stage2, backend)((c) => new PipelineTests(c, List(6, 9, 12), 1)) should be (true)
+    }
+    it should s"test the two-stage add circuit" in {
+      Driver(result, backend)((c) => new PipelineTests(c, List(13, 17, 21), 2)) should be (true)
     }
   }
 }
