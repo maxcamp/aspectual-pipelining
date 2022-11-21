@@ -36,7 +36,7 @@ class Fifo(data: Int *) extends Module {
     // io.out.bits := 0.U(32.W)
     // io.out.valid := true.B
 
-    val q = Module(new Queue(UInt(32.W), data.length, flow = true))
+    // val q = Module(new Queue(UInt(32.W), data.length, flow = true))
     // q.io.enq.valid := true.B
     // for(x <- data) {
     //     q.io.enq.bits := x.U

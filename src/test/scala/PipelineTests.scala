@@ -3,7 +3,7 @@ package main
 import chisel3._
 import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
 
-class PipelineTests(c: Component, outputs: List[Int], delay: Int) extends PeekPokeTester(c) {
+class PipelineTests(c: Component2, outputs: List[Int], delay: Int) extends PeekPokeTester(c) {
   
   // Clock cycles to wait before first output
   step(delay)
@@ -27,15 +27,18 @@ class PipelineTester extends ChiselFlatSpec {
   val add = () => new Add
   val subtract = () => new Subtract
 
-  val stage1 = () => new Component(add, 1, Map("a" -> inputA, "b" -> inputA))
-  val stage2 = () => new Component(add, 2, Map("a" -> stage1, "b" -> inputB))
-  val result = () => new Component(add, 3, Map("a" -> stage2, "b" -> inputC))
+  val stage1 = () => new Component2(add, 1, Map("a" -> inputA, "b" -> inputA))
+  val stage2 = () => new Component2(add, 2, Map("a" -> stage1, "b" -> inputB))
+  val result = () => new Component2(add, 3, Map("a" -> stage2, "b" -> inputC))
 
   backends foreach {backend =>
     it should s"test the one-stage add circuit" in {
-      Driver(stage2, backend)((c) => new PipelineTests(c, List(6, 9, 12), 1)) should be (true)
+      Driver(stage1, backend)((c) => new PipelineTests(c, List(2, 4, 6), 0)) should be (true)
     }
     it should s"test the two-stage add circuit" in {
+      Driver(stage2, backend)((c) => new PipelineTests(c, List(6, 9, 12), 1)) should be (true)
+    }
+    it should s"test the three-stage add circuit" in {
       Driver(result, backend)((c) => new PipelineTests(c, List(13, 17, 21), 2)) should be (true)
     }
   }
