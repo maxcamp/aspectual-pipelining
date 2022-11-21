@@ -21,7 +21,7 @@ class Fifo(data: Int *) extends Module {
     io.out := queue(pointer)
     pointer := pointer + 1.U
 
-    
+
 
 
     // printf("output: %d  pointer: %d  queue[2]: %d\n",
@@ -36,7 +36,7 @@ class Fifo(data: Int *) extends Module {
     // io.out.bits := 0.U(32.W)
     // io.out.valid := true.B
 
-    // val q = Module(new Queue(UInt(32.W), data.length, flow = true))
+    val q = Module(new Queue(UInt(32.W), data.length, flow = true))
     // q.io.enq.valid := true.B
     // for(x <- data) {
     //     q.io.enq.bits := x.U
