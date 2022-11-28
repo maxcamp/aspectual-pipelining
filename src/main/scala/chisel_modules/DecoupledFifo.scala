@@ -3,33 +3,44 @@ package main
 import chisel3._
 import chisel3.util._
 
-class DecoupledFifoIO extends DecoupledBundle[UInt] {
-  val out   = Decoupled(Output(UInt(32.W)))
+class DecoupledFifoIO extends DecoupledBundle {
+  val out   = Output(UInt(32.W))
 }
 
 /**
  * Ouput the values in data, one per clock tick
  * Stall for 3 clock ticks before sending out data[stallOn] 
  */
-class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule[UInt] {
+class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule {
     val io = IO(new DecoupledFifoIO)
 
     val queue = Reg(Vec(data.length, UInt(32.W)))
     val pointer = RegInit(0.U(4.W))
     val counter = RegInit(0.U(2.W))
 
+    // Does not affect anything because we don't accept input, but needs to be set
+    io.inReady := true.B
+
+    // Permanently store values in queue
     for (i <- 0 to data.length-1) {
         queue(i) := data(i).U
     }
 
+    // Simulate queue stalling
     when(pointer === stallOn.U && counter =/= 3.U) {
-        io.out.valid := false.B
-        io.out.bits := 0.U
+        io.outValid := false.B
+        io.out := 0.U
         counter := counter + 1.U
     }
+    // Not ready for output, but our output is valid
+    .elsewhen(!io.outReady) {
+        io.outValid := true.B
+        io.out := queue(pointer)
+    }
+    // Ready to send
     .otherwise {
-        io.out.valid := true.B
-        io.out.bits := queue(pointer)
+        io.outValid := true.B
+        io.out := queue(pointer)
         pointer := pointer + 1.U
     }
 

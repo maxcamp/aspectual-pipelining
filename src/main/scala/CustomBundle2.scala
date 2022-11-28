@@ -6,8 +6,8 @@ import chisel3.experimental.{DataMirror}
 import scala.collection.immutable.ListMap
 
 // Adapted from a Chisel example
-final class CustomBundle2[T <: Data](output: T, elts: (String, Data)*) extends DecoupledOutput[T] {
-    val out = Decoupled(Output(output))
+final class CustomBundle2(output: Data, elts: (String, Data)*) extends DecoupledOutput {
+    val out = Output(output)
 
     val elements = ListMap(elts.map {
         case (field, elt) =>
