@@ -21,7 +21,7 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
     var ioList: List[(String, Data)] = List()
     for ((key, mod) <- inputs) {
         for ((name, data) <- mod.io.elements) {
-            if (name != "out") {
+            if (!name.startsWith("out") && !name.startsWith("in")) {
                 ioList = (key + "_" + name , Input(data.cloneType)) :: ioList
             }
         }
@@ -112,7 +112,7 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
             mod.io.inValid := signals("inValid_"+stage)
             mod.io.outReady := signals("outReady_"+stage)
             for ((name, data) <- mod.io.elements) {
-                if (name != "out") {
+                if (!name.startsWith("out") && !name.startsWith("in")) {
                     mod.io.elements(name) := io.elements(key + "_" + name)
                 }
             }
