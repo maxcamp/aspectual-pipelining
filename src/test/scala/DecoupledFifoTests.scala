@@ -6,19 +6,22 @@ class DecoupledFifoTests(c: DecoupledFifo, stallOn: Int) extends PeekPokeTester(
 
   var i = 1
   do {
-    expect(c.io.out.valid, true)
-    expect(c.io.out.bits, i)
+    poke(c.io.outReady, true)
+    expect(c.io.outValid, true)
+    expect(c.io.out, i)
     step(1)
     i += 1
   } while (i < stallOn+1)
 
   // Stall for 3 clock ticks at a certain index
-  expect(c.io.out.valid, false)
+  poke(c.io.outReady, true)
+  expect(c.io.outValid, false)
   step(3)
 
   do {
-    expect(c.io.out.valid, true)
-    expect(c.io.out.bits, i)
+    poke(c.io.outReady, true)
+    expect(c.io.outValid, true)
+    expect(c.io.out, i)
     step(1)
     i += 1
   } while (i < 5)

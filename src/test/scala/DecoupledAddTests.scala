@@ -10,11 +10,12 @@ class DecoupledAddTests(c: DecoupledAdd) extends PeekPokeTester(c) {
   do {
     poke(c.io.a, inputs(i)._1)
     poke(c.io.b, inputs(i)._2)
-    poke(c.io.out.ready, true)
+    poke(c.io.outReady, true)
+    poke(c.io.inValid, true)
     step(1)
-    expect(c.io.out.ready, true)
-    expect(c.io.out.valid, true)
-    expect(c.io.out.bits, outputs(i))
+    expect(c.io.outReady, true)
+    expect(c.io.outValid, true)
+    expect(c.io.out, outputs(i))
     i += 1
   } while (i < 3)
 }
