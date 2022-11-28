@@ -70,8 +70,8 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
         }
         // Tie signals between stages together
         else {
-            signals("inReady_"+stage) <> signals("outReady_"+order(i-1))
-            signals("outValid_"+order(i-1)) <> signals("inValid_"+stage)
+            signals("outReady_"+order(i-1)) := signals("inReady_"+stage)
+            signals("inValid_"+stage) := signals("outValid_"+order(i-1))
         }
         if (i == order.length-1) {
             signals("outReady_"+stage) := true.B
