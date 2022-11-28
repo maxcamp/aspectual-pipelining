@@ -13,7 +13,12 @@ final class CustomBundle2(output: Data, elts: (String, Data)*) extends Decoupled
         case (field, elt) =>
             field -> elt
         }: _*
-    ) + ("out" -> out)
+    ) + 
+    ("out" -> out) + 
+    ("inValid" -> this.inValid) +
+    ("inReady" -> this.inReady) +
+    ("outValid" -> this.outValid) +
+    ("outReady" -> this.outReady)
     def apply(elt: String): Data = elements(elt)
     override def cloneType: this.type = {
         val cloned = elts.map { case (n, d) => n -> DataMirror.internal.chiselTypeClone(d) }
