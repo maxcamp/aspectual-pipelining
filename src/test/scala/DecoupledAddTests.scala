@@ -8,11 +8,11 @@ class DecoupledAddTests(c: DecoupledAdd) extends PeekPokeTester(c) {
 
   var i = 0
   do {
+    step(1)
     poke(c.io.a, inputs(i)._1)
     poke(c.io.b, inputs(i)._2)
     poke(c.io.outReady, true)
     poke(c.io.inValid, true)
-    step(1)
     expect(c.io.outReady, true)
     expect(c.io.outValid, true)
     expect(c.io.out, outputs(i))
@@ -28,4 +28,8 @@ class DecoupledAddTester extends ChiselFlatSpec {
       Driver(() => new DecoupledAdd, backend)((c) => new DecoupledAddTests(c)) should be (true)
     }
   }
+
+  // chisel3.iotesters.Driver.execute(Array("--generate-vcd-output", "on"), () => new DecoupledAdd) { c =>
+  //   new DecoupledAddTests(c)
+  // } should be(true)
 }

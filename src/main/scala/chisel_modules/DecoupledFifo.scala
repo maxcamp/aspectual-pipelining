@@ -18,8 +18,8 @@ class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule {
     val pointer = RegInit(0.U(4.W))
     val counter = RegInit(0.U(2.W))
 
-    // Does not affect anything because we don't accept input, but needs to be set
-    io.inReady := true.B
+    // Does not affect anything because we don't accept input during runtime
+    io.inReady := DontCare
 
     // Permanently store values in queue
     for (i <- 0 to data.length-1) {
