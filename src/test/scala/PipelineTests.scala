@@ -22,26 +22,35 @@ class PipelineTests(c: Component2, outputs: List[Int]) extends PeekPokeTester(c)
 class PipelineTester extends ChiselFlatSpec {
   behavior of "Add Pipeline"
 
-  val input = () => new DecoupledFifo(List(1, 2, 3), 5)
+  val input = () => new DecoupledFifo(List(1, 2, 3, 4, 5, 6), -1)
   val add = () => new DecoupledAdd
 
   val stage1 = () => new Component2(add, 1, Map("a" -> input, "b" -> input))
   val stage2 = () => new Component2(add, 2, Map("a" -> stage1, "b" -> input))
-  val result = () => new Component2(add, 3, Map("a" -> stage2, "b" -> input))
+  val stage3 = () => new Component2(add, 3, Map("a" -> stage2, "b" -> input))
+  val stage4 = () => new Component2(add, 4, Map("a" -> stage3, "b" -> input))
+  val stage5 = () => new Component2(add, 5, Map("a" -> stage4, "b" -> input))
 
   backends foreach {backend =>
     it should s"test the one-stage add circuit" in {
-      Driver(stage1, backend)((c) => new PipelineTests(c, List(2, 4, 6))) should be (true)
+      Driver(stage1, backend)((c) => new PipelineTests(c, List(2, 4, 6, 8))) should be (true)
     }
     it should s"test the two-stage add circuit" in {
-      Driver(stage2, backend)((c) => new PipelineTests(c, List(0, 3, 6, 9))) should be (true)
+      Driver(stage2, backend)((c) => new PipelineTests(c, List(0, 3, 6, 9, 12))) should be (true)
     }
     it should s"test the three-stage add circuit" in {
-      Driver(result, backend)((c) => new PipelineTests(c, List(0, 0, 4, 8, 12))) should be (true)
+      Driver(stage3, backend)((c) => new PipelineTests(c, List(0, 0, 4, 8, 12, 16))) should be (true)
+    }
+    it should s"test the four-stage add circuit" in {
+      Driver(stage4, backend)((c) => new PipelineTests(c, List(0, 0, 0, 5, 10, 15, 20))) should be (true)
+    }
+    it should s"test the five-stage add circuit" in {
+      Driver(stage5, backend)((c) => new PipelineTests(c, List(0, 0, 0, 0, 6, 12, 18, 24))) should be (true)
     }
   }
 
-  // chisel3.iotesters.Driver.execute(Array("--generate-vcd-output", "on"), stage1) { c =>
-  //   new PipelineTests(c, List(0, 2, 4, 6))
+  // Generate VCD in test_run_dir
+  // chisel3.iotesters.Driver.execute(Array("--generate-vcd-output", "on"), stage5) { c =>
+  //   new PipelineTests(c, List(0, 0, 0, 0, 0, 0, 0, 0))
   // } should be(true)
 }

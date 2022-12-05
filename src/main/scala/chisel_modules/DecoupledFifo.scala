@@ -9,7 +9,7 @@ class DecoupledFifoIO extends DecoupledBundle {
 
 /**
  * Ouput the values in data, one per clock tick
- * Stall for 3 clock ticks before sending out data[stallOn] 
+ * Stall for 2 clock ticks before sending out data[stallOn] 
  */
 class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule {
     val io = IO(new DecoupledFifoIO)
@@ -26,11 +26,8 @@ class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule {
         queue(i) := data(i).U
     }
 
-    // val gogogo = RegInit(false.B)
-    // gogogo := io.outReady
-
     // Simulate queue stalling
-    when(pointer === stallOn.U && counter =/= 3.U) {
+    when(pointer === stallOn.U && counter =/= 2.U) {
         io.outValid := false.B
         io.out := 0.U
         counter := counter + 1.U
