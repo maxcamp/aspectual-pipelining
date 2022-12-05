@@ -26,22 +26,27 @@ class DecoupledFifo(data: List[Int], stallOn: Int) extends DecoupledModule {
         queue(i) := data(i).U
     }
 
+    // val gogogo = RegInit(false.B)
+    // gogogo := io.outReady
+
     // Simulate queue stalling
     when(pointer === stallOn.U && counter =/= 3.U) {
         io.outValid := false.B
         io.out := 0.U
         counter := counter + 1.U
     }
-    // Not ready for output, but our output is valid
-    .elsewhen(!io.outReady) {
-        io.outValid := true.B
-        io.out := queue(pointer)
-    }
-    // Ready to send
     .otherwise {
         io.outValid := true.B
-        io.out := queue(pointer)
-        pointer := pointer + 1.U
+        // Not ready for output, but our output is valid
+        when(!io.outReady) {
+            io.out := queue(pointer)
+        }
+        // Ready to send
+        .otherwise {
+            io.out := queue(pointer)
+            pointer := pointer + 1.U
+        }
     }
+    
 
 }

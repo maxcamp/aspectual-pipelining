@@ -59,24 +59,27 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
     var signals: Map[String, Bool] = Map()
     for (i <- 0 to order.length-1) {
         val stage = order(i)
-        signals += ("inReady_" + stage -> RegInit(true.B))              // Write
-        signals += ("inValid_" + stage -> RegInit(false.B))             // Read
-        signals += ("outReady_" + stage -> RegInit(false.B))            // Read
-        signals += ("outValid_" + stage -> RegInit(false.B))            // Write
-        if (i == 0) {
-            signals("inValid_"+stage) := true.B
-            // Set overall inReady
-            io.inReady := signals("inReady_"+stage)
+        signals += ("inReady_" + stage -> WireInit(false.B))             // Write
+        signals += ("inValid_" + stage -> WireInit(false.B))             // Read
+        signals += ("outReady_" + stage -> WireInit(false.B))            // Read
+        signals += ("outValid_" + stage -> WireInit(false.B))            // Write
+        signals += ("willBeOutValid_" + stage -> WireInit(false.B))
+        // Need to clock valid signal
+        // But only in stages followed by registers
+        if (i != order.length-1) {
+            signals += ("validReg_" + stage -> RegInit(false.B))         
         }
+ 
         // Tie signals between stages together
-        else {
+        if (i != 0) {
             signals("outReady_"+order(i-1)) := signals("inReady_"+stage)
             signals("inValid_"+stage) := signals("outValid_"+order(i-1))
         }
-        if (i == order.length-1) {
-            signals("outReady_"+stage) := true.B
-        }
     }
+    // Starting edge case
+    signals("inValid_"+order(0)) := io.inValid
+    // Ending edge case
+    signals("outReady_"+order(order.length-1)) := io.outReady
 
     // Set the signals for each stage
     for (i <- 0 to order.length-1) {
@@ -84,20 +87,32 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
 
         // Three things can stall a stage: itself, the next stage not being ready for input, or the previous stage not having valid output
 
-        // Before flagging outValid as true, a stage has to wait on: all of its modules to be outValid
-        signals("outValid_"+stage) := stages(stage).values.toList.foldLeft(true.B)((x, y) => x && y.io.outValid)
+        signals("willBeOutValid_"+stage) := stages(stage).values.toList.foldLeft(true.B)((x, y) => x && y.io.outValid) && signals("inValid_"+stage)
 
-        // Before flagging inReady as true, a stage has to wait on: all of its modules to be inReady
-        signals("inReady_"+stage) := stages(stage).values.toList.foldLeft(true.B)((x, y) => x && y.io.inReady)
+        if (i != order.length-1) {
+            // To be outValid, all of a stage's modules must be outValid and and the previous stage must be valid
+            signals("validReg_"+stage) := signals("willBeOutValid_"+stage)
+
+            // outValid signal is clocked by a register
+            signals("outValid_"+stage) := signals("validReg_"+stage)
+        }
+        else {
+            signals("outValid_"+stage) := signals("willBeOutValid_"+stage)
+        }
+
+        // To be inReady, all of a stage's modules must be outValid and the next stage must be ready
+        signals("inReady_"+stage) := stages(stage).values.toList.foldLeft(true.B)((x, y) => x && y.io.outValid) && signals("outReady_"+stage)
+
     }
 
     // Use previousRegisters to track which values are in which registers
-    // The string is the key, the int is the stage for its current registers
+    // The string is the key, the int is the stage for that key's current register
     var previousRegisters: Map[String, Int] = Map()
     for (i <- 0 to order.length-1) {
         val stage = order(i)
 
-        when(signals("outValid_"+stage) && signals("outReady_"+stage)) {
+        // When ready for output
+        when(signals("willBeOutValid_"+stage) && signals("outReady_"+stage)) {
             // Forward old values from previous register to new register
             if (stage != this.stage) {
                 for ((key, previousStage) <- previousRegisters) {
@@ -108,9 +123,9 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
         }
         // Pass the IO inputs to this module to the children one stage at a time
         for ((key, mod) <- stages(stage)) {
-            // We need to supply outReady and inValid signals to submodules
-            mod.io.inValid := signals("inValid_"+stage)
-            mod.io.outReady := signals("outReady_"+stage)
+            // We need to supply outReady and inValid signals to modules
+            mod.io.inValid := true.B    // Not sure what this should be. Not relevant with queues. Maybe same as line below
+            mod.io.outReady := signals("willBeOutValid_"+stage) && signals("outReady_"+stage)
             for ((name, data) <- mod.io.elements) {
                 if (!name.startsWith("out") && !name.startsWith("in")) {
                     mod.io.elements(name) := io.elements(key + "_" + name)
@@ -118,8 +133,8 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
             }
             // If not the final stage
             if (stage != this.stage) {
-                // If ready for output
-                when(signals("outValid_"+stage) && signals("outReady_"+stage)) {
+                // When ready for output
+                when(signals("willBeOutValid_"+stage) && signals("outReady_"+stage)) {
                     // Store the output in a register
                     registers(key + "_" + stage) := mod.io.out
                     previousRegisters += (key -> stage)
@@ -129,8 +144,8 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
     }
 
     // subModule signals
-    subModule.io.inValid := signals("inValid_"+this.stage)
-    subModule.io.outReady := signals("outReady_"+this.stage)
+    subModule.io.inValid := true.B  // // Not sure what this should be. Not relevant with queues. Maybe same as line below
+    subModule.io.outReady := signals("willBeOutValid_"+this.stage) && signals("outReady_"+this.stage)
     // Use the outputs from the children as inputs for subModule
     for ((key, mod) <- inputs) {
         // Whether from a register or otherwise
@@ -142,8 +157,46 @@ class Component2(module: () => DecoupledModule, val stage: Int, preInputs: Map[S
         }
     }
 
-    // Return, setting both output bits and valid signal
+    // Return, setting all outputs
     io.out := subModule.io.out
-    io.outValid := subModule.io.outValid && signals("outValid_"+this.stage)
+    io.outValid := signals("outValid_"+this.stage)
+    io.inReady := signals("inReady_"+order(0))
+
+
+
+    // CHISEL DEBUGGING
+    // if(this.stage == 1) {
+    //     printf("Adder input a %d\nAdder input b %d\nAdder output  %d\nStage in valid  %d\nStage in ready  %d\nStage will b val %d\nStage out valid %d\nStage out ready %d\n\n", 
+    //         subModule.io.elements("a").asUInt, 
+    //         subModule.io.elements("b").asUInt, 
+    //         subModule.io.out.asUInt, 
+    //         signals("inValid_"+this.stage), 
+    //         signals("inReady_"+this.stage), 
+    //         signals("willBeOutValid_"+stage),
+    //         signals("outValid_"+this.stage), 
+    //         signals("outReady_"+this.stage))
+    // }
+    if(this.stage == 2) {
+        printf("Adder input a %d\nAdder input b %d\nAdder output  %d\nStage in valid  %d\nStage in ready  %d\nStage out valid %d\nStage out ready %d\nRegister %d\n\n", 
+            subModule.io.elements("a").asUInt, 
+            subModule.io.elements("b").asUInt, 
+            subModule.io.out.asUInt, 
+            signals("inValid_"+this.stage), 
+            signals("inReady_"+this.stage), 
+            signals("outValid_"+this.stage), 
+            signals("outReady_"+this.stage), 
+            registers("a_1").asUInt)
+    }
+    // if(this.stage == 3) {
+    //     printf("Adder input a %d\nAdder input b %d\nAdder output  %d\nStage in valid  %d\nStage in ready  %d\nStage out valid %d\nStage out ready %d\nRegister %d\n\n", 
+    //         subModule.io.elements("a").asUInt, 
+    //         subModule.io.elements("b").asUInt, 
+    //         subModule.io.out.asUInt, 
+    //         signals("inValid_"+this.stage), 
+    //         signals("inReady_"+this.stage), 
+    //         signals("outValid_"+this.stage), 
+    //         signals("outReady_"+this.stage), 
+    //         registers("a_2").asUInt)
+    // }
 
 }
