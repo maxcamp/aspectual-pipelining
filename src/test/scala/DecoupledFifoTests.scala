@@ -13,10 +13,10 @@ class DecoupledFifoTests(c: DecoupledFifo, stallOn: Int) extends PeekPokeTester(
     i += 1
   } while (i < stallOn+1)
 
-  // Stall for 3 clock ticks at a certain index
+  // Stall for 2 clock ticks at a certain index
   poke(c.io.outReady, true)
   expect(c.io.outValid, false)
-  step(3)
+  step(2)
 
   do {
     poke(c.io.outReady, true)
